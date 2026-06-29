@@ -1,0 +1,65 @@
+CREATE TABLE IF NOT EXISTS usage_events (
+  id TEXT PRIMARY KEY,
+  created_at TIMESTAMPTZ NOT NULL,
+  started_at TIMESTAMPTZ,
+  ended_at TIMESTAMPTZ,
+  duration_ms INTEGER,
+  time_to_first_token_ms INTEGER,
+  gateway_profile TEXT,
+  agent_id TEXT,
+  agent_name TEXT,
+  runtime_id TEXT,
+  machine_identity TEXT,
+  platform TEXT,
+  channel_name TEXT,
+  platform_user_id TEXT,
+  platform_user_display_name TEXT,
+  platform_tenant_id TEXT,
+  platform_conversation_id TEXT,
+  platform_message_id TEXT,
+  thread_id TEXT,
+  session_key TEXT,
+  session_id TEXT,
+  run_id TEXT,
+  turn_id TEXT,
+  request_id TEXT,
+  provider_request_id TEXT,
+  call_source TEXT,
+  provider TEXT,
+  model TEXT,
+  input_tokens INTEGER DEFAULT 0,
+  output_tokens INTEGER DEFAULT 0,
+  total_tokens INTEGER DEFAULT 0,
+  cache_read_tokens INTEGER DEFAULT 0,
+  cache_write_tokens INTEGER DEFAULT 0,
+  reasoning_tokens INTEGER DEFAULT 0,
+  estimated_cost_usd DOUBLE PRECISION DEFAULT 0,
+  input_cost_usd DOUBLE PRECISION DEFAULT 0,
+  output_cost_usd DOUBLE PRECISION DEFAULT 0,
+  cache_cost_usd DOUBLE PRECISION DEFAULT 0,
+  cost_mode TEXT,
+  context_tokens_before INTEGER,
+  context_tokens_after INTEGER,
+  context_window INTEGER,
+  had_tool_calls INTEGER DEFAULT 0,
+  tool_call_count INTEGER DEFAULT 0,
+  tool_names_json JSONB,
+  status TEXT,
+  error_code TEXT,
+  error_message TEXT,
+  retry_count INTEGER DEFAULT 0,
+  prompt_hash TEXT,
+  response_hash TEXT,
+  preview TEXT,
+  raw_usage_json JSONB,
+  metadata_json JSONB
+);
+
+CREATE INDEX IF NOT EXISTS idx_usage_created_at ON usage_events(created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_gateway_time ON usage_events(gateway_profile, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_machine_time ON usage_events(machine_identity, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_user_time ON usage_events(platform, platform_user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_model_time ON usage_events(provider, model, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_session_time ON usage_events(session_key, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_usage_source_time ON usage_events(call_source, created_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS idx_usage_provider_request ON usage_events(provider_request_id) WHERE provider_request_id IS NOT NULL;

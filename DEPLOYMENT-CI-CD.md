@@ -6,7 +6,7 @@ This guide explains how to automatically build and deploy Docker images using Gi
 
 1. **You push code to GitHub** → Triggers workflow
 2. **GitHub Actions builds Docker image** → Runs Dockerfile
-3. **Image is pushed to GitHub Container Registry (GHCR)** and optionally to Alibaba Cloud ACR
+3. **Image is pushed to GitHub Container Registry (GHCR)** → Available for deployment
 4. **On your server, pull and run the image** → No building needed
 
 ## Prerequisites
@@ -17,22 +17,11 @@ This guide explains how to automatically build and deploy Docker images using Gi
 
 ## Setup (One-Time)
 
-Default setup needs no extra steps for GHCR. The workflow file (`.github/workflows/docker-build.yml`) automatically:
+No setup needed! The workflow file (`.github/workflows/docker-build.yml`) is already in the repo. It automatically:
 
 - Builds on every push to `main` branch
 - Pushes to **GitHub Container Registry (GHCR)** using your GitHub token
 - Tags images with branch name, SHA hash, and `latest`
-
-To also push to Alibaba Cloud ACR, add the following in GitHub repository settings:
-
-- `Settings -> Secrets and variables -> Actions -> Variables`
-   - `ACR_REGISTRY` (example: `registry.cn-hangzhou.aliyuncs.com`)
-   - `ACR_NAMESPACE` (your ACR namespace)
-- `Settings -> Secrets and variables -> Actions -> Secrets`
-   - `ACR_USERNAME` (ACR username)
-   - `ACR_PASSWORD` (ACR password/token)
-
-When all four values are present, each workflow run pushes images to both GHCR and ACR.
 
 ## Deployment on Server
 
@@ -124,13 +113,12 @@ The GitHub Actions workflow (`.github/workflows/docker-build.yml`):
    - Checks out code
    - Sets up Docker Buildx (advanced build features)
    - Logs into GitHub Container Registry (auto-authenticated)
-   - Builds and pushes image to ghcr.io/lazytalk/openclaw-usage-hub
-   - If ACR credentials are set, logs into Alibaba Cloud ACR and also pushes there
+   - Builds Docker image
+   - Pushes to ghcr.io/lazytalk/openclaw-usage-hub
    - Caches build layers (faster subsequent builds)
 
 3. **Output:**
    - Image available at: `ghcr.io/lazytalk/openclaw-usage-hub:latest`
-   - Optional ACR image: `<ACR_REGISTRY>/<ACR_NAMESPACE>/openclaw-usage-hub:latest`
    - All pushes → Build + Push (takes ~2-3 minutes)
    - View build logs in GitHub Actions tab
 

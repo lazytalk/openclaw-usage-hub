@@ -20,6 +20,102 @@ You can start editing the page by modifying `app/page.tsx`. The page auto-update
 
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
+## Docker Deploy
+
+Use Docker Compose to deploy the Hub and PostgreSQL together on Linux or macOS.
+
+Note: most current Docker installs use `docker compose`. If your system provides the legacy standalone binary, replace `docker compose` with `docker-compose` in the commands below.
+
+### 1) Prepare environment
+
+```bash
+cat > .env <<'EOF'
+POSTGRES_DB=openclaw_usage
+POSTGRES_USER=openclaw
+POSTGRES_PASSWORD=your-secure-db-password
+INGEST_API_KEY=your-random-api-key-min-16-chars
+AUTH_SECRET=your-random-secret-min-16-chars
+ADMIN_USERNAME=admin
+ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
+NEXT_PUBLIC_APP_NAME=OpenClaw Usage Hub
+EOF
+```
+
+Generate admin password hash:
+
+```bash
+npm run admin:hash -- your-secure-password
+```
+
+Update `.env` with the generated hash and your real secrets:
+
+- `POSTGRES_PASSWORD`
+- `INGEST_API_KEY`
+- `AUTH_SECRET`
+- `ADMIN_PASSWORD_HASH`
+
+### 2) Deploy
+
+```bash
+npm run deploy
+```
+
+Or run commands manually:
+
+```bash
+docker compose build
+docker compose up -d
+docker compose exec hub npm run db:migrate
+```
+
+### 3) Verify
+
+```bash
+curl http://localhost:3000/api/health
+```
+
+Admin dashboard:
+
+```text
+http://localhost:3000/admin
+```
+
+### Useful Docker commands
+
+```bash
+# Start services
+docker compose up -d
+
+# Stop services
+docker compose down
+
+# Restart services
+docker compose restart
+
+# Tail logs
+docker compose logs -f
+
+# Tail hub logs only
+docker compose logs -f hub
+
+# Rebuild image without cache
+docker compose build --no-cache
+
+# Stop and remove containers + volumes
+docker compose down -v
+```
+
+### Deploy from pre-built GHCR image
+
+If the published image is not available for your Mac architecture, fall back to local build with `docker compose build`.
+
+```bash
+docker pull ghcr.io/lazytalk/openclaw-usage-hub:latest
+docker compose up -d
+```
+
+For full deployment details, see `DEPLOYMENT.md` and `DEPLOYMENT-CI-CD.md`.
+
 ## Learn More
 
 To learn more about Next.js, take a look at the following resources:

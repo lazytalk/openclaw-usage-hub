@@ -25,6 +25,7 @@ COPY package*.json ./
 RUN npm ci --omit=dev
 
 COPY --from=builder /app/.next ./.next
+COPY db ./db
 
 COPY scripts ./scripts
 

@@ -114,6 +114,19 @@ docker pull ghcr.io/lazytalk/openclaw-usage-hub:latest
 docker compose up -d
 ```
 
+For stage/production, use env-driven parameters and run migration after startup:
+
+```bash
+docker compose --env-file .env -f docker-compose.yml up -d
+docker compose --env-file .env -f docker-compose.yml exec hub npm run db:migrate
+```
+
+Recommended production pattern:
+
+- Keep deployment structure in Compose YAML.
+- Keep deploy-time values and secrets in host env files or secret manager.
+- Prefer immutable image tags in production (for example `sha-<commit>`) instead of `latest`.
+
 For full deployment details, see `DEPLOYMENT.md` and `DEPLOYMENT-CI-CD.md`.
 
 ## Learn More

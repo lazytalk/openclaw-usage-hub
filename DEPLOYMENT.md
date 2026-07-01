@@ -4,6 +4,28 @@
 
 The project includes Docker configuration for containerized deployment with PostgreSQL.
 
+### Configuration Model (YAML vs ENV)
+
+Use both, with strict separation:
+
+- Compose YAML defines service wiring and infrastructure shape.
+   - services, images/build, ports, volumes, healthchecks, restart policy
+- Environment variables provide deploy-time values.
+   - passwords, API keys, auth secrets, per-environment host/port values
+
+Production guidance:
+
+- Keep Compose YAML in git.
+- Do not commit secret values.
+- Store production values in an env file on the host (for example `.env.prod`) or inject them from your secret manager.
+- Prefer immutable image tags (for example `sha-<commit>`) in production over `latest`.
+
+Recommended file pattern:
+
+- `docker-compose.yml`: base services
+- `docker-compose.prod.yml`: production overrides
+- `.env.prod`: production values on host only (not committed)
+
 ### Prerequisites
 
 - Docker 20.10+
@@ -48,6 +70,13 @@ The project includes Docker configuration for containerized deployment with Post
    ```bash
    docker-compose up -d
    docker-compose exec hub npm run db:migrate
+   ```
+
+   Production-style command pattern:
+
+   ```bash
+   docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml up -d
+   docker compose --env-file .env.prod -f docker-compose.yml -f docker-compose.prod.yml exec hub npm run db:migrate
    ```
 
 ### Accessing the Hub
@@ -119,6 +148,7 @@ docker-compose exec -T postgres psql -U openclaw openclaw_usage < backup_2026062
 - Change all default passwords in `.env`
 - Use strong, randomly generated values for `INGEST_API_KEY` and `AUTH_SECRET`
 - Store `.env` securely (don't commit to git)
+- Prefer `.env.prod` with `--env-file` on production hosts
 - Use SSL/TLS reverse proxy (nginx/traefik) for production
 - Configure proper database backups
 - Monitor logs for errors: `docker-compose logs hub`

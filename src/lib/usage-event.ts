@@ -128,6 +128,8 @@ const usageEventColumns = [
   "metadata_json",
 ];
 
+const jsonColumns = new Set(["tool_names_json", "raw_usage_json", "metadata_json"]);
+
 type UsageEventRecord = Record<(typeof usageEventColumns)[number], unknown>;
 
 function normalizeText(value: unknown) {
@@ -148,6 +150,11 @@ function normalizeJson(value: unknown) {
     }
   }
   return value;
+}
+
+function serializeJsonParam(value: unknown) {
+  if (value == null) return null;
+  return JSON.stringify(value);
 }
 
 export function buildEventId(event: UsageEventInput) {
@@ -234,7 +241,7 @@ export async function upsertUsageEvents(events: UsageEventInput[]) {
   const normalizedEvents = events.map(normalizeUsageEvent);
 
   for (const event of normalizedEvents) {
-    const values = usageEventColumns.map((column) => event[column]);
+    const values = usageEventColumns.map((column) => jsonColumns.has(column) ? serializeJsonParam(event[column]) : event[column]);
     const placeholders = usageEventColumns.map((_, index) => `$${index + 1}`).join(", ");
     const updates = usageEventColumns
       .filter((column) => column !== "id")

@@ -4,9 +4,10 @@ import { query } from "@/lib/db";
 import {
   CHART_DIMENSIONS,
   CHART_METRICS,
-  DEFAULT_CHART_DIMENSIONS,
-  DEFAULT_CHART_METRICS,
+  USAGE_EVENT_COLUMNS,
+  type ChartDimension,
   type ChartMetric,
+  type UsageEventColumn,
 } from "@/lib/chart-options";
 
 type WindowUnit = "minute" | "hour" | "day" | "month";
@@ -31,26 +32,6 @@ const METRIC_SQL: Record<ChartMetric, string> = {
   error_events: "CASE WHEN status = 'error' THEN 1 ELSE 0 END::double precision",
   success_events: "CASE WHEN status = 'success' THEN 1 ELSE 0 END::double precision",
 };
-
-function parseList<T extends string>(
-  raw: string | null,
-  allowed: Record<T, string>,
-  fallback: T[],
-  maxItems: number,
-) {
-  if (!raw) return fallback;
-
-  const deduped: T[] = [];
-  for (const item of raw.split(",").map((value) => value.trim()).filter(Boolean)) {
-    if (!(item in allowed)) continue;
-    const typedItem = item as T;
-    if (deduped.includes(typedItem)) continue;
-    deduped.push(typedItem);
-    if (deduped.length >= maxItems) break;
-  }
-
-  return deduped.length ? deduped : fallback;
-}
 
 function parseWindowUnit(raw: string | null): WindowUnit {
   if (raw === "minute" || raw === "hour" || raw === "day" || raw === "month") return raw;
@@ -109,18 +90,13 @@ function parsePeriodRange(fromRaw: string | null, toRaw: string | null) {
     toDate = swap;
   }
 
-  const from = new Date(`${fromDate}T00:00:00.000Z`);
-  const to = new Date(`${toDate}T00:00:00.000Z`);
-  const maxSpanDays = 365;
-  const spanDays = Math.floor((to.getTime() - from.getTime()) / 86400000) + 1;
-
-  if (spanDays > maxSpanDays) {
-    const adjustedFrom = new Date(to);
-    adjustedFrom.setUTCDate(adjustedFrom.getUTCDate() - (maxSpanDays - 1));
-    fromDate = formatDateOnly(adjustedFrom);
-  }
-
   return { fromDate, toDate };
+}
+
+function parsePositiveInt(raw: string | null, fallback: number, min: number, max: number) {
+  const value = Number.parseInt(raw ?? String(fallback), 10);
+  if (!Number.isFinite(value)) return fallback;
+  return Math.min(Math.max(value, min), max);
 }
 
 export async function GET(request: Request) {
@@ -130,15 +106,12 @@ export async function GET(request: Request) {
   }
 
   const { searchParams } = new URL(request.url);
-  const dimensions = parseList(searchParams.get("dimensions"), CHART_DIMENSIONS, DEFAULT_CHART_DIMENSIONS, 6);
-  const metrics = parseList(searchParams.get("metrics"), CHART_METRICS, DEFAULT_CHART_METRICS, 8);
-  const path = (searchParams.get("path") ?? "").split(",").map((value) => value.trim()).filter(Boolean).slice(0, dimensions.length);
   const filterMode = parseFilterMode(searchParams.get("filterMode"));
   const windowUnit = parseWindowUnit(searchParams.get("windowUnit"));
   const windowValue = parseWindowValue(searchParams.get("windowValue") ?? searchParams.get("days"), windowUnit);
   const { fromDate, toDate } = parsePeriodRange(searchParams.get("fromDate"), searchParams.get("toDate"));
-
-  const metricSql = metrics.map((metric, index) => `${METRIC_SQL[metric]} AS m${index}`).join(", ");
+  const page = parsePositiveInt(searchParams.get("page"), 1, 1, 1000000);
+  const pageSize = parsePositiveInt(searchParams.get("pageSize"), 20, 10, 200);
 
   const whereParts: string[] = [];
   const params: Array<string | number> = [];
@@ -160,40 +133,58 @@ export async function GET(request: Request) {
     );
   }
 
-  path.forEach((value, index) => {
-    const dimension = dimensions[index];
-    params.push(value);
-    whereParts.push(`COALESCE(${dimension}, 'unknown') = $${params.length}`);
-  });
+  for (const dimension of Object.keys(CHART_DIMENSIONS) as ChartDimension[]) {
+    const filterValue = (searchParams.get(`df_${dimension}`) ?? "").trim();
+    if (!filterValue) continue;
+    params.push(`%${filterValue.toLowerCase()}%`);
+    whereParts.push(`LOWER(COALESCE(${dimension}, 'unknown')) LIKE $${params.length}`);
+  }
 
-  const sql = `
+  for (const metric of Object.keys(CHART_METRICS) as ChartMetric[]) {
+    const minRaw = (searchParams.get(`min_${metric}`) ?? "").trim();
+    if (!minRaw) continue;
+
+    const minValue = Number(minRaw);
+    if (!Number.isFinite(minValue)) continue;
+
+    params.push(minValue);
+    whereParts.push(`${METRIC_SQL[metric]} >= $${params.length}`);
+  }
+
+  const whereSql = whereParts.length ? whereParts.join(" AND ") : "TRUE";
+
+  const countSql = `SELECT COUNT(*)::text AS total FROM usage_events WHERE ${whereSql}`;
+  const countResult = await query<{ total: string }>(countSql, params);
+  const total = Number(countResult.rows[0]?.total ?? "0");
+  const totalPages = Math.max(Math.ceil(total / pageSize), 1);
+  const safePage = Math.min(page, totalPages);
+  const offset = (safePage - 1) * pageSize;
+
+  const rowSql = `
     SELECT
-      id,
-      created_at,
-      ${metricSql}
+      ${USAGE_EVENT_COLUMNS.map((column) => {
+        if (column === "created_at" || column === "started_at" || column === "ended_at") {
+          return `${column}::text AS ${column}`;
+        }
+        if (column === "tool_names_json" || column === "raw_usage_json" || column === "metadata_json") {
+          return `${column}::text AS ${column}`;
+        }
+        return column;
+      }).join(",\n      ")}
     FROM usage_events
-    WHERE ${whereParts.join(" AND ")}
-    ORDER BY created_at ASC, id ASC
-    LIMIT 2000
+    WHERE ${whereSql}
+    ORDER BY created_at DESC, id DESC
+    LIMIT $${params.length + 1}
+    OFFSET $${params.length + 2}
   `;
 
-  const result = await query<Record<string, string | number>>(sql, params);
-
-  const rows = result.rows.map((row) => ({
-    id: String(row.id ?? ""),
-    createdAt: String(row.created_at),
-    metrics: Object.fromEntries(
-      metrics.map((metric, index) => {
-        const value = Number(row[`m${index}`] ?? 0);
-        return [metric, Number.isFinite(value) ? value : 0];
-      }),
-    ),
-  }));
+  const rowResult = await query<Record<UsageEventColumn, string | number | null>>(rowSql, [...params, pageSize, offset]);
 
   return NextResponse.json({
-    dimensions,
-    path,
-    metrics,
-    rows,
+    page: safePage,
+    pageSize,
+    total,
+    totalPages,
+    rows: rowResult.rows,
   });
 }

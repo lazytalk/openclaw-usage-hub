@@ -1,5 +1,6 @@
 import { requireSession } from "@/lib/auth";
 import { getDatabaseHealth, query } from "@/lib/db";
+import ChartLabClient from "./chart-lab-client";
 
 async function getOverview() {
   const [{ count = "0" } = { count: "0" }] = (await query<{ count: string }>("SELECT COUNT(*)::text AS count FROM usage_events")).rows;
@@ -35,7 +36,6 @@ async function getOverview() {
     topDimensions: topDimensions.rows,
   };
 }
-
 export default async function AdminPage() {
   const session = await requireSession();
   const [database, overview] = await Promise.all([getDatabaseHealth(), getOverview()]);
@@ -65,6 +65,8 @@ export default async function AdminPage() {
             </button>
           </form>
         </header>
+
+        <ChartLabClient />
 
         <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           {cards.map((card) => (

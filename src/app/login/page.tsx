@@ -1,5 +1,4 @@
 import { getSession } from "@/lib/auth";
-import { getEnv } from "@/lib/env";
 import { redirect } from "next/navigation";
 
 type LoginPageProps = {
@@ -12,7 +11,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   const params = searchParams ? await searchParams : {};
   const error = params.error === "invalid" ? "Invalid username or password." : null;
-  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? getEnv().NEXT_PUBLIC_APP_NAME;
+  const appName = process.env.NEXT_PUBLIC_APP_NAME ?? "OpenClaw Usage Hub";
 
   return (
     <main className="flex min-h-screen items-center justify-center px-6 py-12">

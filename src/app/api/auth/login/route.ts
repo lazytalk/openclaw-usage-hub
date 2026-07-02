@@ -9,10 +9,16 @@ export async function POST(request: Request) {
   const { ADMIN_USERNAME } = getEnv();
 
   if (username !== ADMIN_USERNAME || !(await verifyAdminPassword(password))) {
-    return NextResponse.redirect(new URL("/login?error=invalid", request.url), { status: 303 });
+    return new NextResponse(null, {
+      status: 303,
+      headers: { Location: "/login?error=invalid" },
+    });
   }
 
   const token = await createSession(username);
   await setSessionCookie(token);
-  return NextResponse.redirect(new URL("/admin", request.url), { status: 303 });
+  return new NextResponse(null, {
+    status: 303,
+    headers: { Location: "/admin" },
+  });
 }

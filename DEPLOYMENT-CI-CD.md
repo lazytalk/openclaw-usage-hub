@@ -39,6 +39,7 @@ INGEST_API_KEY=your-random-api-key-min-16-chars
 AUTH_SECRET=your-random-secret-min-16-chars
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=your-bcrypt-hash
+COOKIE_SECURE=true
 NEXT_PUBLIC_APP_NAME=OpenClaw Usage Hub
 EOF
 ```

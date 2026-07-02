@@ -57,7 +57,10 @@ Recommended file pattern:
    INGEST_API_KEY=<your-api-key-min-16-chars>
    AUTH_SECRET=<your-secret-key-min-16-chars>
    ADMIN_PASSWORD_HASH=<bcrypt-hash-from-npm-run-admin-hash>
+   COOKIE_SECURE=true
    ```
+
+   For plain HTTP LAN access (no TLS), set `COOKIE_SECURE=false`.
 
 4. **Deploy:**
 

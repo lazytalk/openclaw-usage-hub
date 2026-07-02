@@ -30,6 +30,7 @@ services:
       AUTH_SECRET: ${AUTH_SECRET}
       ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
       ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH}
+      COOKIE_SECURE: ${COOKIE_SECURE:-true}
       NEXT_PUBLIC_APP_NAME: ${NEXT_PUBLIC_APP_NAME:-OpenClaw Usage Hub}
     ports:
       - "${HUB_PORT:-3000}:3000"

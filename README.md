@@ -37,6 +37,7 @@ INGEST_API_KEY=your-random-api-key-min-16-chars
 AUTH_SECRET=your-random-secret-min-16-chars
 ADMIN_USERNAME=admin
 ADMIN_PASSWORD_HASH=replace-with-bcrypt-hash
+COOKIE_SECURE=true
 NEXT_PUBLIC_APP_NAME=OpenClaw Usage Hub
 EOF
 ```
@@ -53,6 +54,8 @@ Update `.env` with the generated hash and your real secrets:
 - `INGEST_API_KEY`
 - `AUTH_SECRET`
 - `ADMIN_PASSWORD_HASH`
+
+If you access the hub over plain `http://` on a LAN (no TLS), set `COOKIE_SECURE=false` so browsers accept the auth cookie.
 
 ### 2) Deploy
 
